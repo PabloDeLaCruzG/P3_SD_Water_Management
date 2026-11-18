@@ -1,0 +1,43 @@
+DECISIONES P3
+
+1. LENGUAJE Y LIBRERIAS
+- Todo va en Python 3.12
+- Hay un archivo requirements.txt en la raiz con versiones fijas
+- Para las APIs REST (WM_Registry y API_Central): usamos Flask
+- Para el front: Flask + Jinja2, para no mezclar con js
+
+
+2. DONDE SE DESPLIEGA CADA COSA
+- Seguimos usando AWS EC2 (igual que en la P2) con Docker
+- En AWS (Nube): WM_Central, API_Central, WM_Registry, Front, SQLite y Kafka
+- En el PC 1 de laboratorio: WM_FO y WM_W (Openweather)
+- En el PC 2 de laboratorio: WM_WS_M y WM_WS_E
+
+
+3. COMO COMPARTEN LOS DATOS EN AWS
+- WM_Central, API_Central y WM_Registry van en contenedores separados (si se reinicia la web o la API, la Central no se cae)
+- Como estan en la misma maquina de AWS, los tres comparten el mismo archivo db de SQLite
+- La SQLite sigue en modo WAL para que puedan leer varios a la vez sin bloquearse
+- Para cosas en tiempo real, API_Central o WM_Registry le mandan un aviso rapido a WM_Central por la red interna de Docker
+
+
+4. SEGURIDAD
+- Canales seguros al registrarse y autenticarse (TLS/HTTPS):
+  - WM_WS_M habla con WM_Registry por HTTPS y con WM_Central por sockets con TLS.
+  - Por detras es cifrado MIXTO: al conectar usa cifrado asimetrico (certificado autofirmado) para comprobar que el servidor es real y pactar una clave de sesion, luego los datos viajan con cifrado simetrico (rapido)
+  - El Monitor comprueba el certificado del servidor
+
+- Cifrado de mensajes en Kafka (AES-256-GCM):
+  - Todos los mensajes entre WM_Central y WM_WS_E van cifrados con AES-256-GCM usando AESGCM de cryptography
+  - AES-256-GCM hace dos cosas a la vez: cifra el mensaje y lleva un tag de verificacion
+  - WM_FO no cifra sus mensajes (el enunciado dice que no hace falta)
+
+- Registro, credenciales y revocacion (Token + Hash + Clave unica):
+  - Alta: WM_WS_M se registra en WM_Registry y recibe un token secreto. En SQLite solo se guarda el hash SHA-256 de ese token
+  - Autenticacion: WM_WS_M envia su ID + token a WM_Central (por socket TLS). Si es valido, Central crea una clave AES-256 UNICA para esa estacion, la guarda y se la devuelve al Monitor
+  - Traspaso local: el Monitor le pasa esa clave AES al Engine (WM_WS_E) por su socket local para que pueda cifrar y descifrar en Kafka
+  - Restauracion de claves: en Central se puede borrar la clave de una estacion, pasa a FUERA_DE_SERVICIO, se corta su conexion y el Monitor tendra que volver a autenticarse desde su menu para conseguir clave nueva
+
+- Auditoria:
+  - WM_Central guarda un log estructurado (fecha/hora, quien e IP de origen, accion y detalles) de autenticaciones, fugas, cambios de estado, bloqueos y errores
+
