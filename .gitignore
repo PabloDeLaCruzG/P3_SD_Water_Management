@@ -1,0 +1,9 @@
+wm_central.db*
+protocolo_kafka.md
+
+.venv
+
+__pycache__/
+
+race.txt
+servicios_*
