@@ -24,13 +24,15 @@ jobs:
     - name: Construir y subir WS
       uses: docker/build-push-action@v4
       with:
-        context: ./WM_WS
+        context: .
+        file: ./WM_WS/Dockerfile
         push: true
         tags: ${{ secrets.DOCKER_USERNAME }}/practica-aws:ws
     # imagen del Field Operator
     - name: Construir y subir FO
       uses: docker/build-push-action@v4
       with:
-        context: ./WM_FO
+        context: .
+        file: ./WM_FO/Dockerfile
         push: true
         tags: ${{ secrets.DOCKER_USERNAME }}/practica-aws:fo

@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 WORKDIR /app
-COPY WM_Central/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY WM_Central ./WM_Central
 RUN mkdir -p /data
