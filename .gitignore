@@ -7,3 +7,6 @@ __pycache__/
 
 race.txt
 servicios_*
+
+certs/*.key
+.token_*

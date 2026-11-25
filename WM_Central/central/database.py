@@ -15,8 +15,11 @@ from WM_Central.central import config
 def get_db_connection():
     # Conexion por hilo: cada handle_client abre la suya y la mantiene mientras dure esa conexion de WS. 
     # WAL permite lecturas concurrentes sin bloquear al escritor
-    conn = sqlite3.connect(config.DB_FILE)
+    conn = sqlite3.connect(config.DB_FILE, timeout=5.0)
     conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA busy_timeout=5000;")
+  
+
     return conn
 
 
@@ -24,11 +27,40 @@ def init_db():
     # Crea las tablas si no existen
     conn = get_db_connection()
 
+    # TABLA STATIONS
     conn.execute("""
         CREATE TABLE IF NOT EXISTS stations (
             id TEXT PRIMARY KEY,
             ubicacion TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'DESCONECTADA'
+            status TEXT NOT NULL DEFAULT 'DESCONECTADA',
+            token_hash TEXT NOT NULL,
+            aes_key TEXT,
+            block_reason TEXT,
+            registered_at INTEGER NOT NULL
+        )
+    """)
+
+    # TABLA WEATHER
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS station_weather (
+            ws_id TEXT PRIMARY KEY,
+            city TEXT NOT NULL,
+            temp_c REAL,
+            condition TEXT,
+            alert_active INTEGER NOT NULL DEFAULT 0,
+            updated_ts INTEGER NOT NULL
+        )
+    """)
+
+    # TABLA AUDITORIA
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts TEXT NOT NULL,
+            actor TEXT NOT NULL,
+            source_ip TEXT NOT NULL,
+            action TEXT NOT NULL,
+            details TEXT NOT NULL
         )
     """)
 
